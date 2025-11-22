@@ -1,0 +1,5 @@
+{
+  "name": "ibaMonitor Pro",
+  "description": "Real-time signal monitoring system for ibaPDA using simulated ibaNET data streams with configurable alarm logic and Gemini AI analysis.",
+  "requestFramePermissions": []
+}
