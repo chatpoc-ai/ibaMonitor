@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Wifi, WifiOff, Play, Pause, Settings, Zap } from 'lucide-react';
+import { Wifi, WifiOff, Play, Pause, Settings, Zap, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { SignalConfig, SignalValue, AlarmLog, IbaConnectionStatus } from './types';
@@ -12,13 +12,56 @@ import ConfigureSignalsModal from './components/ConfigureSignalsModal';
 // Initial mock service setup
 const mockService = new IbaMockService(MOCK_CONFIGS);
 
+// Generate some initial demo alarms to show workflow immediately
+const generateDemoAlarms = (): AlarmLog[] => {
+  const now = Date.now();
+  return [
+    {
+      id: 'demo_1',
+      signalId: 'sig_2',
+      signalName: 'Bearing Temp A',
+      timestamp: now - 1000 * 60 * 15,
+      value: 82.5,
+      message: 'Value 82.50 exceeded limit defined by: val > 78',
+      severity: 'WARNING'
+    },
+    {
+      id: 'demo_2',
+      signalId: 'sig_3',
+      signalName: 'Shaft Vibration',
+      timestamp: now - 1000 * 60 * 12,
+      value: 7.2,
+      message: 'Value 7.20 exceeded limit defined by: val > 6.5',
+      severity: 'CRITICAL'
+    },
+    {
+      id: 'demo_3',
+      signalId: 'sig_1',
+      signalName: 'Main Motor Speed',
+      timestamp: now - 1000 * 60 * 10,
+      value: 1550,
+      message: 'Value 1550.00 exceeded limit defined by: val > 1450',
+      severity: 'CRITICAL'
+    },
+    {
+      id: 'demo_4',
+      signalId: 'sig_4',
+      signalName: 'Drive Torque',
+      timestamp: now - 1000 * 60 * 5,
+      value: 520,
+      message: 'Value 520.00 exceeded limit defined by: val > 510',
+      severity: 'WARNING'
+    }
+  ];
+};
+
 const App: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [signals, setSignals] = useState<SignalConfig[]>(MOCK_CONFIGS);
   const [signalValues, setSignalValues] = useState<Record<string, SignalValue>>({});
   const [signalHistory, setSignalHistory] = useState<Record<string, SignalValue[]>>({});
-  const [alarms, setAlarms] = useState<AlarmLog[]>([]);
+  const [alarms, setAlarms] = useState<AlarmLog[]>(generateDemoAlarms());
   const [connectionStatus, setConnectionStatus] = useState<IbaConnectionStatus>({
     connected: false,
     ip: '192.168.10.55',
@@ -65,6 +108,43 @@ const App: React.FC = () => {
   const handleSaveConfig = (updatedSignals: SignalConfig[]) => {
     setSignals(updatedSignals);
     mockService.updateConfigs(updatedSignals);
+  };
+
+  // Inject a simulated fault for demo purposes
+  const handleSimulateFault = () => {
+    const now = Date.now();
+    const newAlarms: AlarmLog[] = [
+      {
+        id: crypto.randomUUID(),
+        signalId: 'sig_3',
+        signalName: 'Shaft Vibration',
+        timestamp: now - 2000,
+        value: 9.1,
+        message: 'Value 9.10 exceeded limit defined by: val > 6.5',
+        severity: 'CRITICAL'
+      },
+      {
+        id: crypto.randomUUID(),
+        signalId: 'sig_2',
+        signalName: 'Bearing Temp A',
+        timestamp: now - 1000,
+        value: 88.4,
+        message: 'Value 88.40 exceeded limit defined by: val > 78',
+        severity: 'CRITICAL'
+      },
+      {
+        id: crypto.randomUUID(),
+        signalId: 'sig_1',
+        signalName: 'Main Motor Speed',
+        timestamp: now,
+        value: 0,
+        message: 'Value 0.00 triggered logic: val < 100 (Stopped)',
+        severity: 'WARNING'
+      }
+    ];
+    
+    setAlarms(prev => [...prev, ...newAlarms]);
+    playAlarmSound();
   };
 
   // Data Polling Effect
@@ -162,7 +242,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Status Bar */}
-        <div className="flex items-center gap-6 bg-[#252526] px-4 py-2 rounded-full border border-[#3e3e42]">
+        <div className="hidden md:flex items-center gap-6 bg-[#252526] px-4 py-2 rounded-full border border-[#3e3e42]">
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-gray-500">STATUS:</span>
             <span className={isConnected ? "text-green-400" : "text-red-400"}>
@@ -182,6 +262,14 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button 
+             onClick={handleSimulateFault}
+             className="flex items-center gap-2 px-3 py-2 rounded-md border border-orange-900/50 bg-orange-900/20 text-orange-400 hover:bg-orange-900/40 text-xs font-medium transition-colors"
+             title="Inject simulated fault data"
+          >
+             <AlertTriangle size={16} /> <span className="hidden sm:inline">Simulate Fault</span>
+          </button>
+
           <button 
             onClick={() => setIsPaused(!isPaused)}
             disabled={!isConnected}
