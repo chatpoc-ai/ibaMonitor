@@ -7,6 +7,7 @@ import { IbaMockService, MOCK_CONFIGS } from './services/ibaMockService';
 import { analyzeAlarms } from './services/geminiService';
 import SignalCard from './components/SignalCard';
 import AlarmList from './components/AlarmList';
+import ConfigureSignalsModal from './components/ConfigureSignalsModal';
 
 // Initial mock service setup
 const mockService = new IbaMockService(MOCK_CONFIGS);
@@ -24,6 +25,9 @@ const App: React.FC = () => {
     port: 5001,
     latency: 0
   });
+
+  // Configuration State
+  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
 
   // Gemini AI Analysis State
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -56,6 +60,12 @@ const App: React.FC = () => {
     oscillator.start();
     oscillator.stop(ctx.currentTime + 0.5);
   }, []);
+
+  // Handle Config Save
+  const handleSaveConfig = (updatedSignals: SignalConfig[]) => {
+    setSignals(updatedSignals);
+    mockService.updateConfigs(updatedSignals);
+  };
 
   // Data Polling Effect
   useEffect(() => {
@@ -206,7 +216,10 @@ const App: React.FC = () => {
              <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
                <ActivityIcon /> Live Signals
              </h2>
-             <button className="text-xs flex items-center gap-1 text-gray-400 hover:text-iba-accent transition-colors">
+             <button 
+               onClick={() => setShowConfigModal(true)}
+               className="text-xs flex items-center gap-1 text-gray-400 hover:text-iba-accent transition-colors"
+             >
                <Settings size={14} /> Configure Logic
              </button>
            </div>
@@ -240,6 +253,13 @@ const App: React.FC = () => {
           />
         </div>
       </main>
+
+      <ConfigureSignalsModal 
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        signals={signals}
+        onSave={handleSaveConfig}
+      />
 
       {/* Gemini Analysis Modal */}
       {showAnalysisModal && (

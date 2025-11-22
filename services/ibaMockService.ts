@@ -18,6 +18,11 @@ export class IbaMockService {
     this.signals = initialSignals;
   }
 
+  // Allow updating configurations at runtime
+  public updateConfigs(newSignals: SignalConfig[]) {
+    this.signals = newSignals;
+  }
+
   // Simulates reading a snapshot of data from ibaPDA
   public readValues(): SignalValue[] {
     const now = Date.now();
@@ -50,16 +55,35 @@ export class IbaMockService {
         val = Math.random() * 100;
       }
 
+      val = parseFloat(val.toFixed(2));
+
       // Check logic (Simulating the processing expression check)
-      // In a real app, use a math parser library. Here we do simple checks.
       let isAlarming = false;
-      if (sig.thresholdHigh !== undefined && val > sig.thresholdHigh) isAlarming = true;
-      if (sig.thresholdLow !== undefined && val < sig.thresholdLow) isAlarming = true;
+
+      // If a custom expression is provided, try to evaluate it
+      if (sig.expression) {
+        try {
+          // WARNING: 'new Function' is used here for simulation purposes.
+          // In a production environment, use a safe math parser like 'mathjs' or server-side evaluation.
+          // We create a function that takes 'val' as an argument and returns the expression result.
+          const checkFn = new Function('val', `return ${sig.expression};`);
+          isAlarming = Boolean(checkFn(val));
+        } catch (error) {
+          console.warn(`Failed to evaluate logic for ${sig.name}:`, error);
+          // Fallback to legacy thresholds if expression fails
+          if (sig.thresholdHigh !== undefined && val > sig.thresholdHigh) isAlarming = true;
+          if (sig.thresholdLow !== undefined && val < sig.thresholdLow) isAlarming = true;
+        }
+      } else {
+        // Standard Threshold Logic
+        if (sig.thresholdHigh !== undefined && val > sig.thresholdHigh) isAlarming = true;
+        if (sig.thresholdLow !== undefined && val < sig.thresholdLow) isAlarming = true;
+      }
 
       return {
         id: sig.id,
         timestamp: now,
-        value: parseFloat(val.toFixed(2)),
+        value: val,
         isAlarming
       };
     });
